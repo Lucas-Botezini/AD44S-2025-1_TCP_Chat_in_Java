@@ -5,9 +5,9 @@ public class OnlineUsers {
     public OnlineUsers() {
     }
 
-    public OnlineUsers(String ip, String name) {
-        this.ip = ip;
+    public OnlineUsers(String name, String ip) {
         this.name = name;
+        this.ip = ip;
     }
 
     public String getName() {
