@@ -6,7 +6,6 @@ import java.net.SocketTimeoutException;
 public class Server {
     private int porta;
     private ServerSocket conexao;
-    Socket socket;
 
     public Server(int porta) {
         this.porta = porta;
@@ -15,21 +14,21 @@ public class Server {
     public void run () throws IOException {
 
         // Cria o socket do servidor, onde o servidor irá "escutar" as requisições
+        System.out.println("[Servidor] Esperando conexão.");
         conexao = new ServerSocket(porta);
 
         try {
-            // Fecha o socket do servidor após 30 segundos sem requisição
-            conexao.setSoTimeout(30000);
 
-            // Aguarda a conexão do cliente
-            socket = conexao.accept();
+            while (true) {
+                // Aguarda a conexão do cliente
+                Socket socket = conexao.accept();
 
-            Thread user = new Thread(new Processor(socket));
-            user.start();
+                Thread client = new Thread(new Processor(socket));
+                client.start();
+            }
 
-        } catch (SocketTimeoutException e) {
-            // Fecha o socket do servidor após 30 segundos sem requisição
-            System.out.println("[Servidor] Conexão encerrada por inatividade.");
+        } catch (IOException e) {
+            System.out.println("[Servidor] Erro ao aceitar conexão: " + e.getMessage());
             conexao.close();
         }
 

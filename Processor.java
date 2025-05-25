@@ -19,68 +19,84 @@ public class Processor implements Runnable{
     @Override
     public void run() {
         try {
-            socket.setSoTimeout(30000);
-
-            in = new ObjectInputStream(socket.getInputStream());
             out = new ObjectOutputStream(socket.getOutputStream());
+            out.flush();
+            in = new ObjectInputStream(socket.getInputStream());
 
-            // Lê a mensagem do cliente e insere em uma classe mensagem
-            Mensagem mensagem = (Mensagem) in.readObject();
+            while (!socket.isClosed()) {
 
-            // Grava no map o usuário e seu out
-            String nomeUsuario = mensagem.getRemetente();
-            if (!onlineUsers.containsKey(nomeUsuario)) {
-                synchronized (Processor.class) {
-                    onlineUsers.put(nomeUsuario, out);
-                    System.out.println("[Servidor] Usuário conectado: " + nomeUsuario);
+                // Lê a mensagem do cliente e insere em uma classe mensagem
+                Mensagem mensagem = (Mensagem) in.readObject();
+
+                // Grava no map o usuário e seu out, envia a mensagem que o usuário se conectou
+                String nomeUsuario = mensagem.getRemetente();
+                if (
+                        !onlineUsers.containsKey(nomeUsuario) &&
+                                (mensagem.getConteudo() == null || mensagem.getConteudo().isEmpty())
+                ) {
+                    synchronized (Processor.class) {
+                        onlineUsers.put(nomeUsuario, out);
+                        System.out.println("[Servidor] Usuário conectado: " + nomeUsuario);
+                        broadcastMessage(new Mensagem(
+                                mensagem.getRemetente(),
+                                null,
+                                mensagem.getRemetente() + " se conectou no chat."));
+                    }
+                }
+
+                if (mensagem.getConteudo() != null) {
+                    // Quando o usuário fecha a conexão o seu nome é limpo da lista
+                    if (mensagem.getConteudo().startsWith("/sair")) {
+                        synchronized (Processor.class) {
+                            onlineUsers.remove(mensagem.getRemetente());
+                            System.out.println("[Servidor] Usuário desconectado: " + mensagem.getRemetente());
+                        }
+                        socket.close();
+                        return;
+                    }
+
+                    StringBuilder listaUsuarios = new StringBuilder("Usuários online:\n");
+                    for (String user : onlineUsers.keySet()) {
+                        listaUsuarios.append("- ").append(user).append("\n");
+                    }
+
+                    // Mostra no console do servidor os usuários online
+                    System.out.println(listaUsuarios);
+
+                    // Verifica se a mensagem começa com /usuarios, se sim retorna os usuários onlines
+                    if (mensagem.getConteudo().startsWith("/usuarios")) {
+                        String novoConteudo = listaUsuarios.toString();
+                        Mensagem newMessage = new Mensagem(mensagem.getRemetente(), mensagem.getRemetente(), novoConteudo);
+                        out.writeObject(newMessage);
+
+                    } else if (mensagem.getConteudo().startsWith("/privado")) {
+                        // Verifica se a mensagem começa com /private, se começar envia a mensagem de forma privada, se não envia para todos.
+                        privateMessage(mensagem);
+
+                    } else {
+                        broadcastMessage(mensagem);
+                    }
                 }
             }
-
-            // Quando o usuário fecha a conexão o seu nome é limpo da lista
-            if (mensagem.getConteudo().startsWith("/sair")) {
-                synchronized (Processor.class) {
-                    onlineUsers.remove(mensagem.getRemetente());
-                    System.out.println("[Servidor] Usuário desconectado: " + mensagem.getRemetente());
-                }
-                socket.close();
-                return;
-            }
-
-            StringBuilder listaUsuarios = new StringBuilder("Usuários online:\n");
-            for (String user : onlineUsers.keySet()) {
-                listaUsuarios.append("- ").append(user).append("\n");
-            }
-
-            // Mostra no console do servidor os usuários online
-            System.out.println(listaUsuarios);
-
-            // Verifica se a mensagem começa com /usuarios, se sim retorna os usuários onlines
-            if (mensagem.getConteudo().startsWith("/usuarios")) {
-                String novoConteudo = listaUsuarios.toString();
-                Mensagem newMessage = new Mensagem(mensagem.getRemetente(), mensagem.getRemetente(), novoConteudo);
-                out.writeObject(newMessage);
-
-            } else if (mensagem.getConteudo().startsWith("/privado")) {
-                // Verifica se a mensagem começa com /private, se começar envia a mensagem de forma privada, se não envia para todos.
-                privateMessage(mensagem);
-
-            } else {
-                broadcastMessage(mensagem);
-            }
-
-        } catch(SocketTimeoutException e) {
-            System.out.println("[Servidor] Conexão com o cliente "+socket.getInetAddress().getHostAddress() +":"+ socket.getPort()  +" encerrada por inatividade.");
+        } catch(IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        // Se a conexão é fechada sem o envio da mensagem de fechamento remove o usuário da lista
+        finally {
             try {
+                for (Map.Entry<String, ObjectOutputStream> entry : onlineUsers.entrySet()) {
+                    if (entry.getValue().equals(out)) {
+                        String nomeRemovido = entry.getKey();
+                        onlineUsers.remove(nomeRemovido);
+                        System.out.println("[Servidor] Usuário desconectado inesperadamente: " + nomeRemovido);
+                        broadcastMessage(new Mensagem("Servidor", null, nomeRemovido + " saiu do chat."));
+                        break;
+                    }
+                }
                 socket.close();
-            } catch (IOException e1) {
-                // TODO Auto-generated catch block
-                e1.printStackTrace();
+            } catch (IOException ex) {
+                ex.printStackTrace();
             }
-        }catch(IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
         }
     }
 

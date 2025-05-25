@@ -3,7 +3,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.util.Scanner;
 
-public class Client{
+public class Client {
     private int porta;
     private String host;
     private String nome;
@@ -15,38 +15,53 @@ public class Client{
     }
 
     public void run() {
+
         try{
-        InetAddress endereco;
-        endereco = InetAddress.getByName(host);
+            InetAddress endereco = InetAddress.getByName(host);
+            Socket socket = new Socket(endereco, porta);
 
-        Socket socket = new Socket(endereco, porta);
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+            out.flush();
+            ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 
-        ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-        ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+            try {
+                Mensagem mensagemInical = new Mensagem(nome, null, null);
+                out.writeObject(mensagemInical);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
-        new Thread(() -> {
-            while(true){
-                try {
-                    Mensagem recebida = (Mensagem) in.readObject();
-                    System.out.println(recebida);
-                } catch (Exception e) {
-                    System.out.println("Conecao perdida");
+            new Thread(() -> {
+                while (true) {
+                    // Vai ficar escutando a mensagem a ser enviada pelo servidor
+                    try {
+                        Mensagem recebida = (Mensagem) in.readObject();
+                        System.out.println(recebida.toString());
+                    } catch (IOException e) {
+                        //                    System.out.println("Conecao perdida");
+                        e.printStackTrace();
+                    } catch (ClassNotFoundException e) {
+                        //                    System.out.println("Conecao perdida");
+                        e.printStackTrace();
+                    }
                 }
-            }
-        }).start();
+            }).start();
 
-        while(true){
             Scanner scanner = new Scanner(System.in);
-            String msg = scanner.nextLine();
-            if(msg.equalsIgnoreCase("/sair")){
-                break;
+            while(true){
+                System.out.println("Escreva a sua mensagem: ");
+                String msg = scanner.nextLine();
+
+                if(msg.equalsIgnoreCase("/sair")){
+                    System.out.println("Conexao encerrada");
+                    socket.close();
+                    break;
+                }
+                Mensagem mensagem = new Mensagem(nome,null, msg);
+                out.writeObject(mensagem);
             }
-            Mensagem mensagem = new Mensagem(nome,null, msg);
-            out.writeObject(mensagem);
-        }
-        socket.close();
-        System.out.println("Conexao encerrada");
-        }catch (IOException e){
+
+        } catch (IOException e){
             e.printStackTrace();
         }
     }
