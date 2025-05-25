@@ -121,7 +121,7 @@ public class Processor implements Runnable{
             }
 
         } catch (IOException e) {
-            throw new ChatPrivateException("Erro ao fazer o envio da mensagem privada: " + e.getMessage());
+            throw new RuntimeException("Erro ao fazer o envio da mensagem privada: " + e.getMessage());
         }
     }
 

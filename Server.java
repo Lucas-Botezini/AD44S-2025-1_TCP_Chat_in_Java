@@ -1,7 +1,6 @@
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
 
 public class Server {
     private int porta;
@@ -33,4 +32,14 @@ public class Server {
         }
 
     }
-}
+
+    public static void main(String[] args) {
+        Server servidor = new Server(1234);
+
+        try {
+            servidor.run();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }}

@@ -1,70 +1,89 @@
+import javax.swing.*;
+import java.awt.*;
 import java.io.*;
-import java.net.InetAddress;
 import java.net.Socket;
-import java.util.Scanner;
 
-public class Client {
-    private int porta;
-    private String host;
-    private String nome;
+public class Client extends JFrame {
+    private JTextArea areaTexto;
+    private JTextField campoEntrada;
 
-    public Client(String host, int porta, String nome) {
-        this.host = host;
-        this.porta = porta;
-        this.nome = nome;
+    private Socket socket;
+    private ObjectOutputStream out;
+    private ObjectInputStream in;
+    private String nomeUsuario;
+
+    public Client() {
+        setTitle("Chat TCP - Cliente");
+        setSize(500, 500);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        areaTexto = new JTextArea();
+        areaTexto.setEditable(false);
+        add(new JScrollPane(areaTexto), BorderLayout.CENTER);
+
+        campoEntrada = new JTextField();
+        add(campoEntrada, BorderLayout.SOUTH);
+
+        //Atribui um a ação ao campo, por exemplo toda vez digitar entra nessa rotina.
+        campoEntrada.addActionListener(e -> {
+            //Lê o texto do campo de entrada
+            String texto = campoEntrada.getText();
+            if (!texto.isBlank()) {
+                try {
+                    out.writeObject(new Mensagem(nomeUsuario, null, texto));
+                    // Limpa a caixa de texto após enviar a mensagem
+                    areaTexto.append("\nMensagem enviada: " + texto +"\n");
+                    campoEntrada.setText("");
+                } catch (IOException er) {
+                    areaTexto.append("[Erro ao enviar mensagem]\n");
+                }
+            }
+        });
     }
 
-    public void run() {
-
-        try{
-            InetAddress endereco = InetAddress.getByName(host);
-            Socket socket = new Socket(endereco, porta);
-
-            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+    public void conectar(String host, int porta, String nomeUsuario) {
+        this.nomeUsuario = nomeUsuario;
+        try {
+            socket = new Socket(host, porta);
+            out = new ObjectOutputStream(socket.getOutputStream());
             out.flush();
-            ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+            in = new ObjectInputStream(socket.getInputStream());
 
-            try {
-                Mensagem mensagemInical = new Mensagem(nome, null, null);
-                out.writeObject(mensagemInical);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            // Envia nome do usuário
+            Mensagem mensagemInicial = new Mensagem(nomeUsuario, null, null);
+            out.writeObject(mensagemInicial);
 
+            // Thread para receber mensagens
             new Thread(() -> {
-                while (true) {
-                    // Vai ficar escutando a mensagem a ser enviada pelo servidor
-                    try {
+                try {
+                    while (true) {
                         Mensagem recebida = (Mensagem) in.readObject();
-                        System.out.println(recebida.toString());
-                    } catch (IOException e) {
-                        //                    System.out.println("Conecao perdida");
-                        e.printStackTrace();
-                    } catch (ClassNotFoundException e) {
-                        //                    System.out.println("Conecao perdida");
-                        e.printStackTrace();
+                        areaTexto.append(recebida + "\n");
                     }
+                } catch (IOException | ClassNotFoundException e) {
+                    areaTexto.append("[Desconectado do servidor]\n");
+                    try {
+                        socket.close();
+                    } catch (IOException ignored) {}
                 }
             }).start();
 
-            Scanner scanner = new Scanner(System.in);
-            while(true){
-                System.out.println("Escreva a sua mensagem: ");
-                String msg = scanner.nextLine();
-
-                if(msg.equalsIgnoreCase("/sair")){
-                    System.out.println("Conexao encerrada");
-                    socket.close();
-                    break;
-                }
-                Mensagem mensagem = new Mensagem(nome,null, msg);
-                out.writeObject(mensagem);
-            }
-
-        } catch (IOException e){
-            e.printStackTrace();
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Erro ao conectar: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            System.exit(1);
         }
     }
 
 
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            String nome = JOptionPane.showInputDialog("Digite seu nome:");
+            if (nome == null || nome.trim().isEmpty()) return;
+
+            Client cliente = new Client();
+            cliente.setVisible(true);
+            cliente.conectar("localhost", 1234, nome);
+        });
+    }
 }
