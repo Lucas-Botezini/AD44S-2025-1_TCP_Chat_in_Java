@@ -1,5 +1,6 @@
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class Mensagem implements Serializable {
     private String remetente;
@@ -22,6 +23,8 @@ public class Mensagem implements Serializable {
     @Override
     public String toString() {
         String destino = (destinatario == null) ? "Todos" : destinatario;
-        return "[" + horario.toString() + "] " + remetente + " -> " + destino + ": " + conteudo;
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+        String horarioFormatado = horario.format(formatter);
+        return "[" + horarioFormatado + "] " + remetente + " -> " + destino + ": " + conteudo;
     }
 }

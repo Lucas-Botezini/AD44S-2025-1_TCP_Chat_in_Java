@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,7 +79,9 @@ public class Processor implements Runnable{
                     }
                 }
             }
-        } catch(IOException | ClassNotFoundException e) {
+        }catch (SocketException ex) {
+            System.out.println("[Servidor] Conexao perdida com o cliente: " + ex.getMessage());
+        }catch(IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
         // Se a conexão é fechada sem o envio da mensagem de fechamento remove o usuário da lista
@@ -88,14 +91,14 @@ public class Processor implements Runnable{
                     if (entry.getValue().equals(out)) {
                         String nomeRemovido = entry.getKey();
                         onlineUsers.remove(nomeRemovido);
-                        System.out.println("[Servidor] Usuário desconectado inesperadamente: " + nomeRemovido);
+                        System.out.println("[Servidor] Usuário desconectado : " + nomeRemovido);
                         broadcastMessage(new Mensagem("Servidor", null, nomeRemovido + " saiu do chat."));
                         break;
                     }
                 }
                 socket.close();
-            } catch (IOException ex) {
-                ex.printStackTrace();
+            } catch (IOException e) {
+                System.out.println("[Servidor] Erro ao fechar a conexão: " + e.getMessage());
             }
         }
     }
@@ -109,7 +112,7 @@ public class Processor implements Runnable{
             String destinatario = novoConteudo.substring(0, novoConteudo.indexOf(":"));
 
             // Monta o novo conteúdo da mensagem
-            String conteudo = mensagem.getConteudo() + ": " + novoConteudo.substring(novoConteudo.indexOf(":") + 1);;
+            String conteudo = novoConteudo.substring(novoConteudo.indexOf(":") + 1);;
 
             ObjectOutputStream destinoOut = onlineUsers.get(destinatario);
             if (destinoOut != null) {

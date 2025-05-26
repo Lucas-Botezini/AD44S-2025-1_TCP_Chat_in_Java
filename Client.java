@@ -13,8 +13,7 @@ public class Client extends JFrame {
     private String nomeUsuario;
 
     public Client() {
-        setTitle("Chat TCP - Cliente");
-        setSize(500, 500);
+        setSize(600, 500);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -29,6 +28,28 @@ public class Client extends JFrame {
         campoEntrada.addActionListener(e -> {
             //Lê o texto do campo de entrada
             String texto = campoEntrada.getText();
+
+            if(texto.equals("/sair")){
+                try {
+                    out.writeObject(new Mensagem(nomeUsuario, null, "/sair"));
+                    areaTexto.append("[Você saiu do chat]\n");
+                    System.exit(0);
+                } catch (IOException ex) {
+                    areaTexto.append("[Erro ao sair do chat]\n");
+                }
+                return;
+            }
+
+            if(texto.equals("/help")){
+                areaTexto.append(" Comandos disponíveis:\n");
+                areaTexto.append("1- /help - Mostrar esta mensagem de ajuda\n");
+                areaTexto.append("2- /sair - Sair do chat\n");
+                areaTexto.append("3- /privado:<destinatario>:<mensagem> - Envia uma mensagem privada para determinado usuario\n");
+                areaTexto.append("4- /usuarios - Lista os usuários online\n");
+                campoEntrada.setText("");
+                return;
+            }
+
             if (!texto.isBlank()) {
                 try {
                     out.writeObject(new Mensagem(nomeUsuario, null, texto));
@@ -44,6 +65,7 @@ public class Client extends JFrame {
 
     public void conectar(String host, int porta, String nomeUsuario) {
         this.nomeUsuario = nomeUsuario;
+        setTitle("Chat TCP - Cliente:" + nomeUsuario);
         try {
             socket = new Socket(host, porta);
             out = new ObjectOutputStream(socket.getOutputStream());
