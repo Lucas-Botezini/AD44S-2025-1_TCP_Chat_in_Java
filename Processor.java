@@ -20,21 +20,24 @@ public class Processor implements Runnable{
     @Override
     public void run() {
         try {
+            //Criacao dos streams de entrada e saida
             out = new ObjectOutputStream(socket.getOutputStream());
             out.flush();
             in = new ObjectInputStream(socket.getInputStream());
 
-            while (!socket.isClosed()) {
 
+            while (!socket.isClosed()) {
                 // Lê a mensagem do cliente e insere em uma classe mensagem
                 Mensagem mensagem = (Mensagem) in.readObject();
 
                 // Grava no map o usuário e seu out, envia a mensagem que o usuário se conectou
                 String nomeUsuario = mensagem.getRemetente();
                 if (
+                        // Verifica se o usuário não está online e se a mensagem não é nula ou vazia
                         !onlineUsers.containsKey(nomeUsuario) &&
                                 (mensagem.getConteudo() == null || mensagem.getConteudo().isEmpty())
                 ) {
+                    //adiciona o user ao map e envia a mensagem de conexão
                     synchronized (Processor.class) {
                         onlineUsers.put(nomeUsuario, out);
                         System.out.println("[Servidor] Usuário conectado: " + nomeUsuario);
@@ -55,7 +58,7 @@ public class Processor implements Runnable{
                         socket.close();
                         return;
                     }
-
+                    // Cria uma lista de usuários online
                     StringBuilder listaUsuarios = new StringBuilder("Usuários online:\n");
                     for (String user : onlineUsers.keySet()) {
                         listaUsuarios.append("- ").append(user).append("\n");
@@ -87,6 +90,7 @@ public class Processor implements Runnable{
         // Se a conexão é fechada sem o envio da mensagem de fechamento remove o usuário da lista
         finally {
             try {
+                // Fecha os streams de entrada e saída
                 for (Map.Entry<String, ObjectOutputStream> entry : onlineUsers.entrySet()) {
                     if (entry.getValue().equals(out)) {
                         String nomeRemovido = entry.getKey();
@@ -128,6 +132,7 @@ public class Processor implements Runnable{
         }
     }
 
+    // Envia a mensagem para todos os usuários online
     private void broadcastMessage(Mensagem mensagem) {
         Mensagem newMessage = new Mensagem(mensagem.getRemetente(), null, mensagem.getConteudo());
         for (Map.Entry<String, ObjectOutputStream> entry : onlineUsers.entrySet()) {

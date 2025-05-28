@@ -7,6 +7,7 @@ public class Client extends JFrame {
     private JTextArea areaTexto;
     private JTextField campoEntrada;
 
+    // Variáveis para conexão com o servidor
     private Socket socket;
     private ObjectOutputStream out;
     private ObjectInputStream in;
@@ -29,8 +30,10 @@ public class Client extends JFrame {
             //Lê o texto do campo de entrada
             String texto = campoEntrada.getText();
 
+            // Verifica se o texto é um comando "/sair"
             if(texto.equals("/sair")){
                 try {
+                    // Envia mensagem para o servidor
                     out.writeObject(new Mensagem(nomeUsuario, null, "/sair"));
                     areaTexto.append("[Você saiu do chat]\n");
                     System.exit(0);
@@ -40,7 +43,9 @@ public class Client extends JFrame {
                 return;
             }
 
+            // Verifica se o texto é um comando "/help"
             if(texto.equals("/help")){
+                // Exibe mensagens de ajuda
                 areaTexto.append(" Comandos disponíveis:\n");
                 areaTexto.append("1- /help - Mostrar esta mensagem de ajuda\n");
                 areaTexto.append("2- /sair - Sair do chat\n");
@@ -50,8 +55,10 @@ public class Client extends JFrame {
                 return;
             }
 
+            // Verifica se nao for igual nenhum comando acima, vai enviar a mensagem normalmente
             if (!texto.isBlank()) {
                 try {
+                    // Envia a mensagem para o servidor
                     out.writeObject(new Mensagem(nomeUsuario, null, texto));
                     // Limpa a caixa de texto após enviar a mensagem
                     areaTexto.append("\nMensagem enviada: " + texto +"\n");
@@ -63,10 +70,12 @@ public class Client extends JFrame {
         });
     }
 
+    // Método para conectar ao servidor
     public void conectar(String host, int porta, String nomeUsuario) {
         this.nomeUsuario = nomeUsuario;
         setTitle("Chat TCP - Cliente:" + nomeUsuario);
         try {
+            // Cria socket e streams de entrada e saída
             socket = new Socket(host, porta);
             out = new ObjectOutputStream(socket.getOutputStream());
             out.flush();
@@ -79,7 +88,9 @@ public class Client extends JFrame {
             // Thread para receber mensagens
             new Thread(() -> {
                 try {
+                    // Loop para receber mensagens do servidor
                     while (true) {
+                        // Lê a mensagem recebida do servidor
                         Mensagem recebida = (Mensagem) in.readObject();
                         areaTexto.append(recebida + "\n");
                     }

@@ -17,11 +17,11 @@ public class Server {
         conexao = new ServerSocket(porta);
 
         try {
-
+            // Enquanto o servidor estiver rodando, ele irá aceitar conexões
             while (true) {
                 // Aguarda a conexão do cliente
                 Socket socket = conexao.accept();
-
+                // Inicia uma nova thread para processar a requisição do cliente
                 Thread client = new Thread(new Processor(socket));
                 client.start();
             }
@@ -30,12 +30,11 @@ public class Server {
             System.out.println("[Servidor] Erro ao aceitar conexão: " + e.getMessage());
             conexao.close();
         }
-
     }
 
     public static void main(String[] args) {
+        // Cria uma instância do servidor na porta 1234
         Server servidor = new Server(1234);
-
         try {
             servidor.run();
         } catch (IOException e) {
