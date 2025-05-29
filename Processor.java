@@ -3,7 +3,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,12 +19,12 @@ public class Processor implements Runnable{
     @Override
     public void run() {
         try {
+            //Criacao dos streams de entrada e saida
             out = new ObjectOutputStream(socket.getOutputStream());
             out.flush();
             in = new ObjectInputStream(socket.getInputStream());
 
             while (!socket.isClosed()) {
-
                 // Lê a mensagem do cliente e insere em uma classe mensagem
                 Mensagem mensagem = (Mensagem) in.readObject();
 
@@ -33,9 +32,11 @@ public class Processor implements Runnable{
                 // Grava no map o usuário e seu out, envia a mensagem que o usuário se conectou
                 String nomeUsuario = mensagem.getRemetente();
                 if (
+                        // Verifica se o usuário não está online e se a mensagem não é nula ou vazia
                         !onlineUsers.containsKey(nomeUsuario) &&
                                 (mensagem.getConteudo() == null || mensagem.getConteudo().isEmpty())
                 ) {
+                    //Adiciona o user ao map e envia a mensagem de conexão
                     synchronized (Processor.class) {
                         onlineUsers.put(nomeUsuario, out);
                         System.out.println("[Servidor] Usuário conectado: " + nomeUsuario);
@@ -45,7 +46,7 @@ public class Processor implements Runnable{
                                 mensagem.getRemetente() + " se conectou no chat."));
                     }
                 }
-                
+
                 if (mensagem.getConteudo() != null) {
                     // Quando o usuário fecha a conexão o seu nome é limpo da lista
                     if (mensagem.getConteudo().startsWith("/sair")) {
@@ -57,11 +58,14 @@ public class Processor implements Runnable{
                         return;
                     }
 
+                    // Cria uma lista de usuários online
                     // Mostra no console do servidor os usuários online
                     StringBuilder listaUsuarios = new StringBuilder("Usuários online:\n");
                     for (String user : onlineUsers.keySet()) {
                         listaUsuarios.append("- ").append(user).append("\n");
                     }
+
+                    // Mostra no console do servidor os usuários online
                     System.out.println(listaUsuarios);
 
                     // Verifica se a mensagem começa com /usuarios, se sim retorna os usuários onlines
@@ -87,10 +91,12 @@ public class Processor implements Runnable{
         // Se a conexão é fechada sem o envio da mensagem de fechamento remove o usuário da lista
         finally {
             try {
+                // Fecha os streams de entrada e saída
                 for (Map.Entry<String, ObjectOutputStream> entry : onlineUsers.entrySet()) {
                     if (entry.getValue().equals(out)) {
                         String nomeRemovido = entry.getKey();
                         onlineUsers.remove(nomeRemovido);
+                        System.out.println("[Servidor] Usuário desconectado : " + nomeRemovido);
                         broadcastMessage(new Mensagem("Servidor", null, nomeRemovido + " saiu do chat."));
                         System.out.println("[Servidor] Usuário desconectado : " + nomeRemovido);
                         break;
@@ -117,6 +123,7 @@ public class Processor implements Runnable{
         }
     }
 
+    // Envia a mensagem para todos os usuários online
     private void broadcastMessage(Mensagem mensagem) {
         for (Map.Entry<String, ObjectOutputStream> entry : onlineUsers.entrySet()) {
             try {
