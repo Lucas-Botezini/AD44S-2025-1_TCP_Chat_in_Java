@@ -29,6 +29,7 @@ public class Processor implements Runnable{
                 // Lê a mensagem do cliente e insere em uma classe mensagem
                 Mensagem mensagem = (Mensagem) in.readObject();
 
+                // Verifica se o usuário já não está no Map
                 // Grava no map o usuário e seu out, envia a mensagem que o usuário se conectou
                 String nomeUsuario = mensagem.getRemetente();
                 if (
@@ -39,12 +40,12 @@ public class Processor implements Runnable{
                         onlineUsers.put(nomeUsuario, out);
                         System.out.println("[Servidor] Usuário conectado: " + nomeUsuario);
                         broadcastMessage(new Mensagem(
-                                mensagem.getRemetente(),
+                                "Servidor",
                                 null,
                                 mensagem.getRemetente() + " se conectou no chat."));
                     }
                 }
-
+                
                 if (mensagem.getConteudo() != null) {
                     // Quando o usuário fecha a conexão o seu nome é limpo da lista
                     if (mensagem.getConteudo().startsWith("/sair")) {
@@ -56,12 +57,11 @@ public class Processor implements Runnable{
                         return;
                     }
 
+                    // Mostra no console do servidor os usuários online
                     StringBuilder listaUsuarios = new StringBuilder("Usuários online:\n");
                     for (String user : onlineUsers.keySet()) {
                         listaUsuarios.append("- ").append(user).append("\n");
                     }
-
-                    // Mostra no console do servidor os usuários online
                     System.out.println(listaUsuarios);
 
                     // Verifica se a mensagem começa com /usuarios, se sim retorna os usuários onlines
@@ -70,7 +70,7 @@ public class Processor implements Runnable{
                         Mensagem newMessage = new Mensagem(mensagem.getRemetente(), mensagem.getRemetente(), novoConteudo);
                         out.writeObject(newMessage);
 
-                    } else if (mensagem.getConteudo().startsWith("/privado")) {
+                    } else if (!mensagem.getDestinatario().isEmpty()) {
                         // Verifica se a mensagem começa com /private, se começar envia a mensagem de forma privada, se não envia para todos.
                         privateMessage(mensagem);
 
@@ -91,8 +91,8 @@ public class Processor implements Runnable{
                     if (entry.getValue().equals(out)) {
                         String nomeRemovido = entry.getKey();
                         onlineUsers.remove(nomeRemovido);
-                        System.out.println("[Servidor] Usuário desconectado : " + nomeRemovido);
                         broadcastMessage(new Mensagem("Servidor", null, nomeRemovido + " saiu do chat."));
+                        System.out.println("[Servidor] Usuário desconectado : " + nomeRemovido);
                         break;
                     }
                 }
@@ -104,35 +104,23 @@ public class Processor implements Runnable{
     }
 
     private void privateMessage(Mensagem mensagem) {
-        // Apaga o "/privado:" do conteúdo da mensagem
-        String novoConteudo = mensagem.getConteudo().replaceFirst("/privado:", "");
-
         try {
-            // Salva o destinatário dessa mensagem em uma string
-            String destinatario = novoConteudo.substring(0, novoConteudo.indexOf(":"));
-
-            // Monta o novo conteúdo da mensagem
-            String conteudo = novoConteudo.substring(novoConteudo.indexOf(":") + 1);;
-
-            ObjectOutputStream destinoOut = onlineUsers.get(destinatario);
+            ObjectOutputStream destinoOut = onlineUsers.get(mensagem.getDestinatario());
             if (destinoOut != null) {
-                Mensagem newMessage = new Mensagem(mensagem.getRemetente(), destinatario, conteudo);
-                destinoOut.writeObject(newMessage);
+                destinoOut.writeObject(mensagem);
             } else {
-                Mensagem erro = new Mensagem("Servidor", mensagem.getRemetente(), "Usuário '" + destinatario + "' não encontrado.");
+                Mensagem erro = new Mensagem("Servidor", mensagem.getRemetente(), "Usuário '" + mensagem.getDestinatario() + "' não encontrado.");
                 out.writeObject(erro);
             }
-
         } catch (IOException e) {
             throw new RuntimeException("Erro ao fazer o envio da mensagem privada: " + e.getMessage());
         }
     }
 
     private void broadcastMessage(Mensagem mensagem) {
-        Mensagem newMessage = new Mensagem(mensagem.getRemetente(), null, mensagem.getConteudo());
         for (Map.Entry<String, ObjectOutputStream> entry : onlineUsers.entrySet()) {
             try {
-                entry.getValue().writeObject(newMessage);
+                entry.getValue().writeObject(mensagem);
             } catch (IOException e) {
                 System.out.println("Erro ao enviar mensagem para " + entry.getKey() + ": " + e.getMessage());
             }

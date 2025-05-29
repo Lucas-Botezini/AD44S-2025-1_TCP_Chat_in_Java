@@ -52,7 +52,14 @@ public class Client extends JFrame {
 
             if (!texto.isBlank()) {
                 try {
-                    out.writeObject(new Mensagem(nomeUsuario, null, texto));
+                    String[] separador = texto.split(":", 3);
+                    if (separador[0].equalsIgnoreCase("/privado") || separador[0].equalsIgnoreCase("/private")) {
+                        out.writeObject(new Mensagem(nomeUsuario, separador[1], separador[2]));
+                    } else {
+                        out.writeObject(new Mensagem(nomeUsuario, null, texto));
+                    }
+                    // O método flush() força o "despejo" (envio) de quaisquer dados que estejam acumulados no buffer para o destino.
+                    out.flush();
                     // Limpa a caixa de texto após enviar a mensagem
                     areaTexto.append("\nMensagem enviada: " + texto +"\n");
                     campoEntrada.setText("");
@@ -75,6 +82,7 @@ public class Client extends JFrame {
             // Envia nome do usuário
             Mensagem mensagemInicial = new Mensagem(nomeUsuario, null, null);
             out.writeObject(mensagemInicial);
+            out.flush();
 
             // Thread para receber mensagens
             new Thread(() -> {
