@@ -74,12 +74,11 @@ public class Processor implements Runnable{
                         Mensagem newMessage = new Mensagem(mensagem.getRemetente(), mensagem.getRemetente(), novoConteudo);
                         out.writeObject(newMessage);
 
-                    } else if (!mensagem.getDestinatario().isEmpty()) {
+                    } else if (mensagem.getDestinatario() == null) {
+                        broadcastMessage(mensagem);
+                    } else {
                         // Verifica se a mensagem começa com /private, se começar envia a mensagem de forma privada, se não envia para todos.
                         privateMessage(mensagem);
-
-                    } else {
-                        broadcastMessage(mensagem);
                     }
                 }
             }
@@ -96,7 +95,6 @@ public class Processor implements Runnable{
                     if (entry.getValue().equals(out)) {
                         String nomeRemovido = entry.getKey();
                         onlineUsers.remove(nomeRemovido);
-                        System.out.println("[Servidor] Usuário desconectado : " + nomeRemovido);
                         broadcastMessage(new Mensagem("Servidor", null, nomeRemovido + " saiu do chat."));
                         System.out.println("[Servidor] Usuário desconectado : " + nomeRemovido);
                         break;
