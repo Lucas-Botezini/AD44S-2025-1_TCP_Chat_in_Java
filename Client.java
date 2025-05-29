@@ -100,6 +100,31 @@ public class Client extends JFrame {
                         // Lê a mensagem recebida do servidor
                         Mensagem recebida = (Mensagem) in.readObject();
                         areaTexto.append(recebida + "\n");
+
+                        if (recebida.getConteudo() != null &&
+                                recebida.getConteudo().equalsIgnoreCase("Já existe um usuário conectado com esse nome, por favor tente novamente!")
+                        ) {
+                            SwingUtilities.invokeLater(() -> {
+                                JOptionPane.showMessageDialog(Client.this,
+                                        "Já existe um usuário conectado com esse nome.\nPor favor, tente novamente!",
+                                        "Erro de Conexão",
+                                        JOptionPane.ERROR_MESSAGE);
+
+                                // Fecha os recursos do cliente atual
+                                try {
+                                    if (in != null) in.close();
+                                    if (out != null) out.close();
+                                    if (socket != null && !socket.isClosed()) socket.close();
+                                } catch (IOException ioException) {
+                                    System.err.println("Erro ao fechar socket após nome duplicado: " + ioException.getMessage());
+                                }
+                                Client.this.dispose(); // Fecha a janela atual do cliente
+
+                                // Reinicia o processo de pedir o nome e conectar
+                                Client.startConnection();
+                            });
+                            return; // Importante para sair do loop da thread de leitura desta instância do cliente
+                        }
                     }
                 } catch (IOException | ClassNotFoundException e) {
                     areaTexto.append("[Desconectado do servidor]\n");
@@ -117,9 +142,16 @@ public class Client extends JFrame {
 
 
     public static void main(String[] args) {
+        startConnection();
+    }
+
+    private static void startConnection() {
         SwingUtilities.invokeLater(() -> {
             String nome = JOptionPane.showInputDialog("Digite seu nome:");
-            if (nome == null || nome.trim().isEmpty()) return;
+            if (nome == null || nome.trim().isEmpty()) {
+                System.out.println("Nenhum nome fornecido. Encerrando.");
+                return;
+            }
 
             Client cliente = new Client();
             cliente.setVisible(true);

@@ -45,6 +45,17 @@ public class Processor implements Runnable{
                                 null,
                                 mensagem.getRemetente() + " se conectou no chat."));
                     }
+                } else if (
+                        onlineUsers.containsKey(nomeUsuario) &&
+                            (mensagem.getConteudo() == null || mensagem.getConteudo().isEmpty())
+                ) {
+                    Mensagem erroMsg = new Mensagem("Servidor", mensagem.getRemetente(),
+                            "Já existe um usuário conectado com esse nome, por favor tente novamente!");
+
+                    out.writeObject(erroMsg); // 'out' é o ObjectOutputStream DESTE cliente que falhou ao logar
+                    out.flush();
+                    socket.close();
+                    return;
                 }
 
                 if (mensagem.getConteudo() != null) {
@@ -94,9 +105,11 @@ public class Processor implements Runnable{
                 for (Map.Entry<String, ObjectOutputStream> entry : onlineUsers.entrySet()) {
                     if (entry.getValue().equals(out)) {
                         String nomeRemovido = entry.getKey();
-                        onlineUsers.remove(nomeRemovido);
-                        broadcastMessage(new Mensagem("Servidor", null, nomeRemovido + " saiu do chat."));
-                        System.out.println("[Servidor] Usuário desconectado : " + nomeRemovido);
+                        synchronized (Processor.class) {
+                            onlineUsers.remove(nomeRemovido);
+                            broadcastMessage(new Mensagem("Servidor", null, nomeRemovido + " saiu do chat."));
+                            System.out.println("[Servidor] Usuário desconectado : " + nomeRemovido);
+                        }
                         break;
                     }
                 }
